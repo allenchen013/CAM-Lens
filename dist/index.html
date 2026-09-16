@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CAM Lens · PCB 檢視器</title><meta name="description" content="在瀏覽器內檢視 CAM350 ASCII 電路板檔案、圖層與鑽孔尺寸。檔案不會上傳。">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230b1422'/%3E%3Cpath d='M8 8h10v8h6M8 24h8v-8' fill='none' stroke='%233dd9b8' stroke-width='3'/%3E%3Ccircle cx='8' cy='8' r='3' fill='%23f8be68'/%3E%3Ccircle cx='8' cy='24' r='3' fill='%23f8be68'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css"><script src="i18n.js" defer></script><script src="parser.js" defer></script><script src="exporter.js" defer></script><script src="app.js" defer></script>
+</head>
+<body>
+<header class="topbar"><div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M7 8h11v8h7M7 24h9v-8"/><circle cx="7" cy="8" r="3"/><circle cx="7" cy="24" r="3"/></svg><div>CAM <strong>Lens</strong><span data-i18n="viewerName">PCB 檢視器</span></div></div><div class="top-actions"><select id="languageSelect" class="language-select" aria-label="Language / 語言"><option value="zh-TW">繁體中文</option><option value="en">English</option></select><span class="privacy" data-i18n="privacy">檔案只在本機讀取</span><button id="exportGerber" data-i18n="exportGerber">匯出 Gerber</button><button id="openFile" class="primary" data-i18n="openFile">＋ 開啟檔案</button><input id="fileInput" type="file" accept=".pcb,.cam,.bak,text/plain" hidden></div></header>
+<main class="workspace">
+<aside class="sidebar">
+ <section class="file-card"><div class="eyebrow" data-i18n="currentBoard">目前圖面</div><h1 id="fileName">範例板.pcb</h1><div id="fileMeta" class="muted"></div><div id="demoBadge" class="badge" data-i18n="demoBadge">範例板 · 請載入你的檔案</div></section>
+ <section class="layer-section"><div class="section-title"><h2 data-i18n="layers">圖層</h2><span id="layerCount" class="muted"></span></div><div class="small-actions"><button id="allLayers" data-i18n="allLayers">全部顯示</button><button id="copperOnly" data-i18n="copper">銅箔</button><button id="holesOnly" data-i18n="holes">孔位</button></div><div id="layers"></div></section>
+ <section class="drill-section"><div class="section-title"><h2 data-i18n="drills">鑽孔</h2><span id="holeCount" class="muted"></span></div><p class="note" data-i18n="drillHint">點選一列，標出同尺寸的孔。</p><div class="table-scroll"><table><thead><tr><th data-i18n="tool">刀具</th><th data-i18n="drawingMM">孔圖 mm</th><th data-i18n="drillMM">鑽孔 mm</th><th data-i18n="count">數量</th></tr></thead><tbody id="drillRows"></tbody></table></div><button id="clearFilter" class="text-button" hidden data-i18n="clearFilter">取消孔徑標示</button></section>
+ <details id="formatInfo"><summary data-i18n="formatInfo">格式與顯示說明</summary><p data-i18n="formatHelp">支援 CAM350 ASCII 文字格式；已以 6.0 版檔案驗證。其他版本、二進位檔與特殊圖形可能無法完整顯示。</p><p data-i18n="drillHelp">「孔圖」來自孔位圖層；「鑽孔」來自 NC 刀具表，兩者可能因加工補償而不同。可另外匯出 Gerber X2 與 Excellon；不會修改原檔。</p><div id="warnings"></div></details>
+</aside>
+<section class="viewer" aria-label="電路板檢視區" data-i18n-aria="viewerAria">
+ <div class="viewer-toolbar"><div class="segmented"><button id="panTool" class="active" aria-pressed="true" data-i18n="pan">移動</button><button id="measureTool" aria-pressed="false" data-i18n="measure">量測</button></div><div class="view-actions"><label><input id="gridToggle" type="checkbox" checked> <span data-i18n="grid">網格</span></label><button id="zoomOut" aria-label="縮小" data-i18n-aria="zoomOut">−</button><button id="zoomIn" aria-label="放大" data-i18n-aria="zoomIn">＋</button><button id="fitView"><span data-i18n="fit">全圖</span> <kbd>F</kbd></button></div></div>
+ <div id="canvasWrap" tabindex="0" aria-label="圖面。拖曳移動，滾輪縮放，F 鍵顯示全圖。" data-i18n-aria="canvasAria"><canvas id="board"></canvas><div class="canvas-caption"><span id="viewLabel">範例預覽</span><span id="boardSize"></span></div><div id="dropOverlay"><strong data-i18n="drop">放開以檢視檔案</strong><span>CAM350 ASCII · .pcb / .cam</span></div><div id="selection" hidden></div><div id="measurement" hidden></div><div id="scaleBar"><div></div><span></span></div><div class="gesture-hint" data-i18n="gestures">拖曳移動 · 滾輪縮放 · 點選鑽孔</div></div>
+ <footer class="statusbar"><span id="coordinates">X —　Y —</span><span id="renderStatus"></span><span id="zoomStatus">100%</span></footer>
+</section>
+</main><div id="toast" role="status" aria-live="polite" hidden></div>
+<dialog id="exportDialog" aria-labelledby="exportTitle">
+ <div class="export-heading"><div><div class="eyebrow">GERBER X2 + EXCELLON</div><h2 id="exportTitle" data-i18n="exportGerber">匯出 Gerber</h2></div><div class="export-heading-actions"><select id="exportLanguage" class="language-select" aria-label="Language / 語言"><option value="zh-TW">繁體中文</option><option value="en">English</option></select><button id="closeExport" aria-label="關閉匯出" data-i18n-aria="closeExport">✕</button></div></div>
+ <p class="export-intro" data-i18n="exportIntro">每個圖層各存成一份 Gerber X2，打包成 ZIP。座標、比例與孔徑保持原值。</p>
+ <div class="export-presets"><div class="small-actions"><button id="exportAll" data-i18n="selectAll">選取全部</button><button id="exportVisible" data-i18n="visibleOnly">目前顯示</button></div><label><span data-i18n="copperLayerCount">銅箔層數</span> <input id="copperLayerCount" type="number" min="2" max="64" value="2"></label></div>
+ <div class="export-table-wrap"><table class="export-table"><thead><tr><th data-i18n="exportLayers">匯出圖層</th><th data-i18n="function">圖層用途 / Function</th><th data-i18n="polarity">圖形代表</th></tr></thead><tbody id="exportLayerRows"></tbody></table></div>
+ <p class="note" data-i18n="exportHelp">用途依圖層名稱預選，請確認分類與銅箔層數。防焊預設為開窗；孔位圖含有框線時，請改選「製作參考圖」。</p>
+ <div class="export-options"><label><input type="checkbox" id="includeDrills" checked> <span data-i18n="includeDrills">附上 Excellon 鑽孔檔（NC 刀具直徑）</span></label><label><input type="checkbox" id="includeText" checked> <span data-i18n="includeText">包含文字（依檔內字型轉成輪廓）</span></label></div>
+ <div class="export-caution" data-i18n="exportCaution">文字曲線以 0.001 mm 容差近似，請覆核外觀。這次匯出不會自動建立純板框檔；交付製板前仍需確認板框。</div>
+ <p id="exportSummary" role="status" aria-live="polite"></p><p id="exportError" role="alert" hidden></p>
+ <div class="export-footer"><span class="muted" data-i18n="localConversion">全程在本機轉換</span><button id="downloadGerber" class="primary" data-i18n="downloadZip">下載 Gerber ZIP</button></div>
+</dialog>
+</body></html>
