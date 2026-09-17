@@ -2,6 +2,15 @@
 (function(root) {
  'use strict';
  const strings = {
+  export:['匯出','Export'],exportFormat:['匯出格式','Export format'],
+  exportIPC:['匯出 IPC-2581','Export IPC-2581'],
+  ipcIntro:['匯出 IPC-2581C XML，並附資料保留清單與鑽孔檔。僅包含現有圖形及 NC 參考資料；不包含 BOM、元件座標、網路、材料疊構或已確認的板框。','Export IPC-2581C XML with a data manifest and drill files. Contains existing graphics and NC references only; no BOM, component placement, nets, material stackup or verified board profile.'],
+  ipcIncludeDrills:['包含 NC 孔位參考資料及 Excellon 鑽孔檔','Include NC references and Excellon drill files'],
+  ipcCaution:['這是部分資料交換，不是完整製板或組裝資料。因孔徑公差未知，XML 以參考圓形及自訂屬性保存 NC 資料，不產生標準 Hole 元素；加工資料請使用附上的鑽孔檔。混合圖層不會自動拆成板框或 V-cut。文字曲線容差為 0.001 mm。','This is a partial exchange, not a complete fabrication or assembly package. With hole tolerances unknown, XML keeps NC data as reference circles and custom attributes, not standard Hole elements; use the accompanying drill files for machining data. Mixed layers are not split into Profile or V-cut. Text curve tolerance is 0.001 mm.'],
+  downloadIPC:['下載 IPC-2581 ZIP','Download IPC-2581 ZIP'],
+  ipcSummary:['IPC-2581C · {layers} 層 · {holes} 個 NC 參考孔位','IPC-2581C · {layers} layers · {holes} NC reference hits'],
+  sourceDataAbsent:['未找到元件清單、封裝實體或網路記錄；圖形不能還原為 BOM 或元件座標。','No component, footprint or net records found; graphics cannot reconstruct a BOM or component placement.'],
+  sourceDataUnsupported:['檔案含元件、封裝或網路記錄，但本工具尚未解析，匯出會被阻擋以免遺失資料。','Component, footprint or net records were detected but are not parsed. Export is blocked to prevent data loss.'],
   title:['CAM Lens · PCB 檢視器','CAM Lens · PCB Viewer'],
   description:['在瀏覽器內檢視 CAM350 ASCII 電路板檔案、圖層與鑽孔尺寸，匯出 Gerber X2。檔案不會上傳。','View CAM350 ASCII PCB files, layers and drill sizes, and export Gerber X2 locally in your browser.'],
   viewerName:['PCB 檢視器','PCB Viewer'], privacy:['檔案只在本機讀取','Files stay on your device'], exportGerber:['匯出 Gerber','Export Gerber'],openFile:['＋ 開啟檔案','＋ Open file'],
@@ -31,10 +40,14 @@
   measureHint:['依序點選兩個位置以量測距離；再點一下可重新量測。','Select two points to measure. Select again to start a new measurement.'],measureStart:['已選取起點，請點選終點。','Start selected. Select the end point.'],measurement:['距離 {distance} mm　｜　ΔX {dx}　ΔY {dy}','Distance {distance} mm | ΔX {dx}  ΔY {dy}'],
   selectedDrill:['T{tool} · 鑽孔','T{tool} · Drill'],drawingValue:['孔圖　{value}','Drawing  {value}'],toolValue:['刀具　{value} mm','Tool  {value} mm'],noMatch:['無對應資料','No matching drawing'],
   checking:['正在檢查圖層…','Checking layers…'],exportSummary:['{gerbers} 份 Gerber X2 · {drills} 份 Excellon · {holes} 個鑽孔','Gerber X2: {gerbers} · Excellon: {drills} · Holes: {holes}'],omittedText:[' · 已排除 {count} 筆文字',' · {count} text objects excluded'],demoExport:[' · 目前是範例板',' · Demo board'],adjustExport:['請調整選項後再匯出','Adjust the settings before exporting'],
-  exportLayer:['匯出 {name}','Export {name}'],layerFunction:['{name} 的 X2 用途','X2 function for {name}'],layerPolarity:['{name} 的極性','Polarity for {name}'],downloadReady:['已產生 {name} · 請查看下載項目','Created {name} · Check your downloads'],
+  exportLayer:['匯出 {name}','Export {name}'],layerFunction:['{name} 的圖層用途','Layer function for {name}'],layerPolarity:['{name} 的極性','Polarity for {name}'],downloadReady:['已產生 {name} · 請查看下載項目','Created {name} · Check your downloads'],
   toolOpenExport:['開啟 Gerber 匯出設定','Open Gerber export'],toolReadExport:['讀取 Gerber 匯出狀態','Read Gerber export status'],toolReadBoard:['讀取圖面摘要','Read board summary'],toolSetLayers:['設定顯示圖層','Set visible layers'],toolLanguage:['切換介面語言','Set interface language']
  };
  const messages = {
+  '文字含 XML 不允許的字元。':'Text contains characters that XML cannot represent.',
+  '文字挖空輪廓無法對應外框。':'A text cutout could not be matched to its outer contour.',
+  '元件或網路資料尚未支援 IPC-2581 匯出。':'Component or net records are not yet supported by IPC-2581 export.',
+  '尚未支援網路連接資料':'Net connectivity records are not supported',
   '檔案太大，請使用 30 MB 以下的檔案。':'Use a file smaller than 30 MB.',
   '這不是可讀取的 CAM350 ASCII 檔案。請選擇文字格式的 .pcb 或 .cam 檔案。':'This is not a readable CAM350 ASCII file. Choose a text-format .pcb or .cam file.',
   '檔案內有無效或超出範圍的座標。':'The file contains invalid or out-of-range coordinates.',

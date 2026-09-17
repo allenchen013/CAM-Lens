@@ -1,6 +1,6 @@
 # CAM Lens
 
-**在本機瀏覽器中檢視 CAM350 ASCII 電路板，並匯出 Gerber X2。**
+**在本機瀏覽器中檢視 CAM350 ASCII 電路板，並匯出 Gerber X2 與部分 IPC-2581C 資料。**
 
 [English](README.md) | 繁體中文
 
@@ -40,7 +40,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory dist
 
 ## 匯出 Gerber
 
-1. 開啟支援的 CAM350 ASCII 檔，按「**匯出 Gerber**」。
+1. 開啟支援的 CAM350 ASCII 檔，按「**匯出**」，再選擇 **Gerber X2**。
 2. 勾選圖層，確認「**銅箔層數**」、每層「**用途**」與「**極性**」。
 3. 選擇是否附上 NC 鑽孔檔與檔內字型文字。
 4. 按「**下載 Gerber ZIP**」。
@@ -61,6 +61,25 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory dist
 `n` 代表銅箔總層數，預設 **2**，可設定 **2–64**，也可指定內層銅箔。防焊預設 **Negative**，代表圖形是防焊開窗；這個屬性描述材料用途，不會反轉圖形本身。
 
 孔圖與刀具直徑可以不同。例如 **孔圖 0.9 mm／NC 刀具 1.0 mm**，匯出後仍會維持這個差值。`.drl` 使用 NC 刀具直徑及明確的毫米小數座標。`drill_map.gbr` 是參考圖，不能取代 Excellon 鑽孔檔。
+
+## 匯出 IPC-2581
+
+選擇 **匯出**，在格式選單選擇 **IPC-2581C**，確認圖層用途與選取範圍，再按 **下載 IPC-2581 ZIP**。切換格式會保留已選圖層與設定。壓縮檔包含一份 IPC-2581C XML、可選的 Excellon/XNC 鑽孔檔、資料清單與中英文轉換說明。
+
+這是 **USERDEF 模式的部分圖形資料交換**，不是完整製板或組裝資料。保留圖層圖形、用途、正背面、極性、原始名稱、文字內容與輪廓，以及 NC 孔位參考與刀徑／孔圖對照。座標使用 mm 並保留原點；混合板框／孔位圖維持 `DOCUMENT`，不會推測 `Profile`、V-cut 用途或材料疊構。
+
+**不提供逆向還原功能。** 無法從圖形還原原始元件編號、料號、BOM、放置座標或腳位／NET 對應。空白元件與封裝區段不會補造資料；若偵測到尚未支援的元件、封裝或網路記錄，會阻擋匯出，避免默默丟棄。
+
+IPC-2581 的 `Hole` 要求明確的正負孔徑公差，但目前支援的 CAM 資料無法確定這些值。未知不等於零，因此 NC 孔位以 **參考圓形與 CAMLens 自訂屬性** 保存，不輸出標準 `Hole` 元素。加工孔位及刀徑請使用附上的 `.drl`；其他軟體可能忽略自訂屬性，是否可匯入取決於接收端。例如 0.9 mm 孔圖與補償後 1.0 mm 刀徑會分別保留。
+
+XML 已使用 [KiCad 官方原始碼附帶的 IPC-2581C XSD](https://gitlab.com/kicad/code/kicad/-/blob/master/qa/data/pcbnew/ipc2581/IPC-2581C.xsd) 檢查。此 schema 未包含在原始碼包，也不屬於本專案的 MIT 授權。本機驗證需安裝 `xmllint`，並自行從 [IPC](https://webstds.ipc.org/2581/) 或 KiCad 取得 schema：
+
+```sh
+python3 scripts/validate-ipc2581.py board-ipc2581.xml /path/to/IPC-2581C.xsd
+IPC2581_SCHEMA=/path/to/IPC-2581C.xsd node --test ipc2581.test.cjs
+```
+
+檢查包含 XML 結構與參照、圖形、匯出選項、文字挖空、特殊字元與鑽孔補償。通過 schema 驗證不代表設計完整、可直接製造或所有 CAM 軟體均可匯入。
 
 ## 支援格式與限制
 
@@ -96,7 +115,7 @@ python3 -m http.server 8765 --bind 127.0.0.1 --directory dist
 原始碼是一般 HTML、CSS 與 JavaScript。測試及打包腳本需要 **Node.js 20 以上**，沒有外部套件依賴；單純使用檢視器不需要 Node。
 
 ```sh
-node --test parser.test.cjs exporter.test.cjs i18n.test.cjs
+node --test parser.test.cjs exporter.test.cjs ipc2581.test.cjs i18n.test.cjs
 node scripts/build-standalone.cjs
 ```
 

@@ -1,6 +1,6 @@
 # CAM Lens
 
-**A local-first CAM350 ASCII PCB viewer and Gerber X2 exporter.**
+**A local-first CAM350 ASCII PCB viewer with Gerber X2 and partial IPC-2581C export.**
 
 English | [繁體中文](README.zh-TW.md)
 
@@ -32,6 +32,7 @@ Then open [localhost:8765](http://127.0.0.1:8765). No npm installation is needed
 - Drill table, diameter highlighting, and hole inspection with coordinates.
 - Separate drawing diameters and NC tool diameters, preserving source compensation.
 - Gerber X2 export for all or selected layers, with editable layer roles, polarity and copper layer count.
+- IPC-2581C XML export for existing graphics and NC references, with explicit data-availability notes.
 - Separate Excellon / XNC exports for plated and non-plated hits.
 - ZIP download with a file manifest and conversion notes.
 - Optional WebMCP tools for language, layer visibility, board summaries and the export dialog. File download remains a user action.
@@ -40,7 +41,7 @@ Language changes preserve the loaded board, pan/zoom, measurements, selected hol
 
 ## Export Gerber
 
-1. Open a supported CAM350 ASCII file and select **Export Gerber**.
+1. Open a supported CAM350 ASCII file and select **Export**, then choose **Gerber X2**.
 2. Choose layers, confirm the **copper layer count**, and review each layer's **function** and **polarity**.
 3. Choose whether to include NC drill files and embedded-font text.
 4. Select **Download Gerber ZIP**.
@@ -61,6 +62,25 @@ Default role suggestions:
 `n` is the configured copper layer count (default **2**, allowed **2–64**). Inner copper roles can be assigned explicitly. Soldermask defaults to **Negative**, meaning the image depicts openings. This attribute describes the image's meaning; it does not invert the geometry.
 
 Drawing diameters and actual tool diameters can differ. For example, a **0.9 mm drawing hole / 1.0 mm NC tool** stays exactly that way after export. The `.drl` files use NC tool diameters with explicit metric decimal coordinates. A `drill_map.gbr` is a reference drawing and does not replace the Excellon drilling file.
+
+## Export IPC-2581
+
+Select **Export**, choose **IPC-2581C**, confirm the layer roles and selection, then choose **Download IPC-2581 ZIP**. Switching formats preserves the selected layers and export settings. The ZIP contains one IPC-2581C XML file, optional Excellon/XNC drill files, a manifest and bilingual conversion notes.
+
+This is a **partial USERDEF geometry exchange**, not a complete fabrication or assembly package. It preserves layer graphics, roles, sides, polarity, original names, source text with outlines, and NC reference positions with tool/drawing diameter metadata. All coordinates retain the source origin in millimetres. Mixed outline/drill drawings stay `DOCUMENT`; no `Profile`, V-cut intent or material stackup is inferred.
+
+**No reverse engineering is performed.** Graphics cannot recover original reference designators, part numbers, BOM, placement or pin/net assignments. Empty component/footprint sections remain absent. Detected component, footprint or net records that the parser does not support block export rather than being silently discarded.
+
+IPC-2581 `Hole` requires numeric positive and negative tolerances, which this CAM subset does not establish. Unknown tolerance is not zero: NC hits are therefore **reference circles with CAMLens nonstandard attributes**, not standard `Hole` objects. Use the accompanying `.drl` files for NC machining data. Other IPC consumers may ignore custom attributes; import support depends on the receiving software. A drawing diameter of 0.9 mm and compensated tool diameter of 1.0 mm remain distinct.
+
+The XML is checked against the IPC-2581C XSD, using the schema distributed in [KiCad's official source](https://gitlab.com/kicad/code/kicad/-/blob/master/qa/data/pcbnew/ipc2581/IPC-2581C.xsd). The schema is not bundled or relicensed under this project's MIT license. To validate locally, install `xmllint` and obtain the schema separately from [IPC](https://webstds.ipc.org/2581/) or KiCad:
+
+```sh
+python3 scripts/validate-ipc2581.py board-ipc2581.xml /path/to/IPC-2581C.xsd
+IPC2581_SCHEMA=/path/to/IPC-2581C.xsd node --test ipc2581.test.cjs
+```
+
+Checks cover schema structure and references, geometry, selections, text cutouts, XML escaping and drill compensation. Passing schema validation does not certify design completeness, manufacturability or compatibility with every CAM importer.
 
 ## Supported formats and limits
 
@@ -96,7 +116,7 @@ The public source contains a synthetic demo and synthetic test fixtures. It excl
 The source is plain HTML, CSS and JavaScript. Node.js **20 or later** is sufficient for the dependency-free test and packaging scripts; Node is not needed to use the viewer.
 
 ```sh
-node --test parser.test.cjs exporter.test.cjs i18n.test.cjs
+node --test parser.test.cjs exporter.test.cjs ipc2581.test.cjs i18n.test.cjs
 node scripts/build-standalone.cjs
 ```
 
@@ -113,6 +133,7 @@ Independent verification has also loaded generated Gerber/XNC files with Gerbona
    i18n.js          Chinese/English catalog and language preferences
    parser.js        CAM350 ASCII parser
    exporter.js      Gerber X2, XNC and ZIP writer
+   ipc2581.js       Partial IPC-2581C XML writer
    app.js           Canvas viewer and interactions
  scripts/
    build-standalone.cjs    Produce the offline HTML edition

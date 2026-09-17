@@ -7,6 +7,7 @@
     if (!/^\uFEFF?\*STATUS[AB]?\s/m.test(text) || !/^MODE\s+Cam\s*$/m.test(text)) throw new Error('這不是可讀取的 CAM350 ASCII 檔案。請選擇文字格式的 .pcb 或 .cam 檔案。');
     const rows = text.replace(/^\uFEFF/, '').split(/\r?\n/);
     const model = { name, version: '', layers: [], apertures: [], tools: [], drills: [], fonts: {}, textStyles: {}, warnings: [], bounds: null, entityCount: 0 };
+    model.sourceData = { componentRecords:0, footprintRecords:0, netRecords:0 };
     const layerMap = new Map(), tables = new Map(), warnings = new Map();
     const warn = (s) => warnings.set(s, (warnings.get(s) || 0) + 1);
     const number = (s) => { const n = Number(s); if (s === undefined || s === '' || !Number.isFinite(n) || Math.abs(n) > 1e13) throw new Error('檔案內有無效或超出範圍的座標。'); return n; };
@@ -28,6 +29,9 @@
         continue;
       }
       let t = row.split(/\s+/), k = t[0];
+      if(section==='*CMP_LIST')model.sourceData.componentRecords++;
+      if(section==='*FP_LIBRARY')model.sourceData.footprintRecords++;
+      if(/^\*(NET|NETLIST|NETS|SIGNALS)(_|$)/.test(section)){model.sourceData.netRecords++;warn('尚未支援網路連接資料');}
       if (k === 'TEXTSTYLE3') {
         model.textStyles[t[1]] = { height:mm(t[2]), spacing:mm(t[3]), stroke:mm(t[4]), angle:number(t[5]), slant:number(t[6]), xScale:number(t[7]), alignment:number(t[8]), mode:number(t[9]), font:t[10] };
       } else if (section === '*FONTS') {

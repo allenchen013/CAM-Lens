@@ -19,7 +19,7 @@ test('localized status interpolates values and preserves source-derived strings 
  i18n.setLanguage('zh-TW',false);assert.equal(i18n.t('layerCount',{count:9}),'9 層');
 });
 test('all parser/exporter literal errors and warnings have English messages',()=>{
- for(const name of ['parser','exporter']){const text=fs.readFileSync('dist/'+name+'.js','utf8');for(const match of text.matchAll(/(?:new Error\(|warn\()'([^']*[\u4e00-\u9fff][^']*)'/g))assert(Object.hasOwn(i18n.messages,match[1]),match[1]);}
+ for(const name of ['parser','exporter','ipc2581']){const text=fs.readFileSync('dist/'+name+'.js','utf8');for(const match of text.matchAll(/(?:new Error\(|warn\()'([^']*[\u4e00-\u9fff][^']*)'/g))assert(Object.hasOwn(i18n.messages,match[1]),match[1]);}
  i18n.setLanguage('en',false);
  assert.equal(i18n.message('未支援的圖形指令：ARC'),'Unsupported graphic command: ARC');
  assert.equal(i18n.message('檔案含未支援的資料，無法完整匯出：未支援的圖形指令：ARC；部分鑽孔找不到刀具定義'),'Unsupported data prevents a complete export: Unsupported graphic command: ARC; Some drills have no tool definition');
